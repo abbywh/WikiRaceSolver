@@ -5,7 +5,6 @@ import sqlite3, re
 from lxml import etree
 
 
-
 def index_table(cursor):
     print("index table")
     sql = ("CREATE INDEX title_index ON links (title);")
@@ -41,6 +40,44 @@ def filter_text(text):
             links.append(link[1:-1].lower())
     return links
 
+def parse_pikl():
+    graph = {}
+    data_path = "wiki_multistream.xml"
+    title = ""
+    links = list()
+    buffer=""
+    collect=False
+    n=0
+    for event, elem in ET.iterparse(data_path, events = ('start','end')):
+        tname = striptag(elem.tag)
+        if collect==True:
+            buffer = buffer + ("" if elem.text is None else elem.text)
+        if event == 'start':
+            if tname == 'title':
+                title = ("" if elem.text is None else elem.text.lower())
+            if tname == 'text':
+                if elem.text is not None:
+                    links= links + filter_text(elem.text)
+                else:
+                    collect=True
+        if event == "end" and tname == 'text':
+            links = links + filter_text(buffer)
+            buffer=""
+            collect=False
+        if event == "end" and tname == 'page':
+            n=n+1
+            graph[title]=links
+            title=""
+            links=list()
+            if (n%500000==0):
+                print(n)
+                with open('graph.pkl', 'ab+') as pkl_file:
+                    pickle.dump(graph, pkl_file)
+                    graph={}
+        elem.clear()
+    with open('graph.pkl', 'ab+') as pkl_file:
+        pickle.dump(graph, pkl_file)
+        graph={}
 def parse():
     conn = sqlite3.connect('graph.db')
     c = conn.cursor()
@@ -85,11 +122,3 @@ def parse():
         elem.clear()
     conn.commit()
     conn.close()
-
-conn = sqlite3.connect('graph.db')
-c = conn.cursor()
-index_table(c)
-print("starting commit")
-conn.commit()
-print("ending commit")
-conn.close()

@@ -1,64 +1,36 @@
-import sqlite3
-from xml.etree import ElementTree as ET
-from bs4 import BeautifulSoup
-#Mainfile for testing shortest paths
+import funcs_pq, funcs_hash, funcs_queue,wikiparse,pickle, time, sqlite3
 
+try:
+    conn =sqlite3.connect("graph.db")
+    conn.row_factory = lambda cursor, row: row[0]
+    c = conn.cursor()
+except:
+    print("Parsing db...")
+    wikiparse.parse()
 
-#we precompute the graph in parser.py
-def valid(start,end,db):
-    return get_adjlist(start,db) != [] and get_adjlist(end,db)!=[]
+try:
+    open('graph.pkl')
+except:
+    "Parsing pikl..."
+    wikiparse.parse_pikl()
 
-def get_adjlist(point,db):
-    db.execute("SELECT links FROM links WHERE title =\'" + point.replace('\'','\'\'') +"\' LIMIT 1")
-    return db.fetchall()
+dir = input("Enter 1 for a Priority Queue, 2 for a Queue, 3 for a hashmap in memory\n")
 
-def to_list(v):
-    ret = list()
-    f = ET.fromstring(v[-1])
-    for element in f:
-        if element.tag=="link":
-            ret.append(v[0:-1]+[element.text])
-    return ret
+if dir != "1" and dir != "2" and dir != "3":
+    print("please enter a legal response.")
+    exit()
 
-def shortest_path(start,end,db):
-    if not valid(start,end,db):
-        return None
-    queue = [[start]]
-    while queue:
-        v = queue.pop(0)
-        try:
-            unstack =to_list(v)
-        except:
-            unstack=[]
-        if unstack != []:
-            if (v[0:-1]+[end]) in unstack:
-                return v[0:-1]+ [end]
-            queue = queue+unstack
-        elif v[-1].lower() == end.lower():
-            return v
-        else:
-            for node in get_adjlist(v[-1],db):
-                new_path = v+[node]
-                queue.append(new_path)
-    return None
+start = input("Enter the starting path\n")
 
+finish = input("Enter end path\n")
 
-def test(db):
-    assert(valid(" kfdnsaj","afs fnkdj",db)==False)
-    assert(valid("anarchism","hierarchy",db)==True)
-    assert(shortest_path(" kfdnsaj","afs fnkdj",db) is None)
-    assert(shortest_path("dog","dog",db)==["dog"])
-    print("test 1")
-    assert(shortest_path("anarchism","hierarchy",db)==["anarchism", "hierarchy"])
-    print("test 2")
-    assert(shortest_path("anarchism","partially ordered set",db)==["anarchism", "hierarchy","partially ordered set"])
-    print(shortest_path("cat","partially ordered set",db))
+time_start = time.time()
+if dir =="1":
+    print(funcs_pq.shortest_path(start,finish,c))
+if dir == "2":
+    print(funcs_queue.shortest_path(start,finish,c))
+else:
+    data = funcs_hash.to_graph('graph.pkl')
+    print(funcs_hash.shortest_path(start,finish,data))
 
-database = "graph.db"
-conn =sqlite3.connect(database)
-conn.row_factory = lambda cursor, row: row[0]
-c = conn.cursor()
-
-print(get_adjlist("benito mussolini",c))
-test(c)
-#print(shortest_path("adolf hitler","dog",c))
+print(time.time() - time_start)

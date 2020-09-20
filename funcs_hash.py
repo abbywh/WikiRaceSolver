@@ -29,7 +29,6 @@ def shortest_path(start,end,graph):
     while queue:
         v = queue.pop(0)
         if v[-1].lower() == end.lower():
-            print(v)
             return v
         else:
             if v[-1] not in graph:
@@ -46,5 +45,3 @@ def test(data):
     assert(shortest_path("anarchism","hierarchy",data)==["anarchism", "hierarchy"])
     print("test 2")
     assert(shortest_path("anarchism","partially ordered set",data)==["anarchism", "hierarchy","partially ordered set"])
-data = to_graph('0graph.pkl')
-test(data)
